@@ -1,0 +1,21 @@
+{
+    "url": "http://reportes.sui.gov.co",
+    "endpoints": {
+        "reporte": "/fabricaReportes/reporte"
+    },
+    "variables": {
+        "Suscriptores": "1",
+        "Consumo": "2",
+        "Valor Consumo": "3",
+        "Factura Promedio": "4",
+        "Consumo Promedio": "5",
+        "Tarifa Media": "6",
+        "Total Facturado": "7"
+    },
+    "ubicaciones": {
+        "Rural": "1",
+        "Urbano": "2",
+        "Centro Poblado": "3",
+        "Total": "4"
+    }
+}
