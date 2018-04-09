@@ -26,7 +26,10 @@ def month_iter(start_year, start_month, end_year, end_month, asc=True):
 
     """
     ym_start = 12*start_year + start_month - 1
+    print("ym_start", ym_start)
     ym_end = 12*end_year + end_month - 1
+    print("ym_end", ym_end)
+    
     for ym in range(ym_start, ym_end):
         y, m = divmod(ym, 12)
         yield (y, m+1)
@@ -55,7 +58,7 @@ def scrap(query, output_type='raw'):
                     "Periodo": f"{año:04d}-{mes:02d}"
                 }
                 
-                logger.info(f"Preparing request of {spec['Variable']} {spec['Periodo']} {spec['ubicación']}")
+                logger.info(f"Preparing request of {spec['Variable']} {spec['Periodo']} {spec['Ubicación']}")
 
                 r = requests.get(url, params=params)
                 logger.info(f"Request to {r.url}")
@@ -74,9 +77,16 @@ def scrap(query, output_type='raw'):
                 if output_type == 'raw':
                     res = text
                 elif output_type == 'pandas':
-                    res = pd.read_csv(io.StringIO(text), sep=',', encoding='ANSI', na_values='ND', error_bad_lines=False, skipfooter=4, engine='python')
+                    res = pd.read_csv(
+                        io.StringIO(text),
+                        sep=',',
+                        encoding='ANSI',
+                        na_values='ND',
+                        error_bad_lines=False,
+                        skipfooter=4,
+                        engine='python')
                 else:
                     raise NotImplementedError(f"Output type '{output_type}' not implemented")
 
-                logger.info(f"Yielding result of {spec['valor']} {spec['periodo']} {spec['ubicación']}")
+                logger.info(f"Yielding result of {spec['Variable']} {spec['Periodo']} {spec['Ubicación']}")
                 yield res, spec
