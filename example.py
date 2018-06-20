@@ -1,4 +1,4 @@
-from scrap_the_sui.scrap import scrap, month_iter
+from scrap_the_sui.scrap import scrap
 
 
 import logging
