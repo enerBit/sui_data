@@ -1,14 +1,16 @@
-from scrap_the_sui.scrap import scrap
-
-
 import logging
 
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                    handlers=[logging.StreamHandler()])
+from sui.scrap import scrap
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
+)
 
 logger = logging.getLogger("SUI_scrapper")
 logger.setLevel(logging.INFO)
+
 
 def main():
     query = {
@@ -27,11 +29,11 @@ def main():
             "Rural",
             "Urbano",
             "Centro Poblado",
-    #         "Total",
-        ]
+            #         "Total",
+        ],
     }
 
-    for data, specs in scrap(query, output_type='pandas'):
+    for data, specs in scrap(query, output_type="pandas"):
         print(specs)
         print(data.head(5))
 
