@@ -4,7 +4,7 @@ import zipfile
 
 import bs4
 import httpx
-from pydantic import BaseModel, Field
+import pydantic
 
 from sui.reports import BASE_URL, OutputFormat, SUIReport
 
@@ -82,24 +82,26 @@ class Ubicacion(str, enum.Enum):
     total = 4
 
 
-class UsageReportParams(BaseModel, use_enum_values=True):
+class UsageReportParams(pydantic.BaseModel, use_enum_values=True):
     """Usage report for a given period of time."""
 
-    idreporte: SUIReport = Field(
+    idreporte: SUIReport = pydantic.Field(
         SUIReport.tc1_validated.value, serialization_alias="idreporte"
     )
-    integration_masterreport: SUIReport = Field(
+    integration_masterreport: SUIReport = pydantic.Field(
         SUIReport.tc1_validated.value, serialization_alias="integration_masterreport"
     )
     formatting_chosenformat: OutputFormat = "HTML"
 
-    año: int = Field(..., serialization_alias="ele_com_133.agno")
-    periodo: int = Field(..., serialization_alias="ele_com_133.periodo")
-    comercializador: str = Field(..., serialization_alias="ele_com_133.comercializador")
-    items: int = Field(-1, serialization_alias="sizeChooser")
+    año: int = pydantic.Field(..., serialization_alias="ele_com_133.agno")
+    periodo: int = pydantic.Field(..., serialization_alias="ele_com_133.periodo")
+    comercializador: str = pydantic.Field(
+        ..., serialization_alias="ele_com_133.comercializador"
+    )
+    items: int = pydantic.Field(-1, serialization_alias="sizeChooser")
 
 
-def get_sdf(client: httpx.Client, params: UsageReportParams):
+def get_tc1_validated(client: httpx.Client, params: UsageReportParams):
     """Get the usage report from the SUI."""
     params = params.model_dump(by_alias=True)
     response = client.get(BASE_URL, params=params, timeout=500)
@@ -113,9 +115,35 @@ def get_sdf(client: httpx.Client, params: UsageReportParams):
     return raw_data
 
 
+class TC1TidyRecord(pydantic.BaseModel):
+    id_mercado: str
+    niu: str
+    mes: int
+    año: int
+
+
+def tidy_tc1(content: io.StringIO, sep: str = "-"):
+    records = []
+    for i, line in enumerate(content.splitlines()):
+        if i == 0:
+            continue
+        id_mercado, niu, mes, año = line.strip().split(sep)
+        records.append(
+            TC1TidyRecord(
+                id_mercado=id_mercado,
+                niu=niu,
+                mes=int(mes),
+                año=int(año),
+            )
+        )
+    return records
+
+
 if __name__ == "__main__":
     params = UsageReportParams(año=2024, periodo=1, comercializador="59850")
-    client = httpx.Client()
-    sdf = get_sdf(client, params)
-    print(len(sdf.splitlines()))
-    client.close()
+    with httpx.Client() as client:
+        tc1_validated = get_tc1_validated(client, params)
+
+    records = tidy_tc1(tc1_validated)
+    for record in records:
+        print(record)
