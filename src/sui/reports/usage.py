@@ -1,12 +1,25 @@
 import enum
+import logging
+import re
+from typing import Optional
 
 import httpx
+import pandas as pd
 import pydantic
 
 from sui.reports import BASE_URL, OutputFormat, SUIReport
 
+TAIL_METADATA_LENGTH = 1_000
+METADA_SEPARATOR_PATTERN = re.compile(r",{14,16}")
 
-class Variable(str, enum.Enum):
+logger = logging.getLogger(__name__)
+FIXED_PARAMS = {
+    "idreporte": SUIReport.usage.value,
+    "integration_masterreport": SUIReport.usage.value,
+}
+
+
+class Reporte(int, enum.Enum):
     suscriptores = 1
     consumo = 2
     valor_consumo = 3
@@ -16,7 +29,17 @@ class Variable(str, enum.Enum):
     total_facturado = 7
 
 
-class Ubicacion(str, enum.Enum):
+class Variable(str, enum.Enum):
+    suscriptores = "usuarios Empresa Departamento y Municipio"
+    consumo = "Consumos Empresa Departamento y Municipio"
+    valor_consumo = "Valor Consumo Empresa Departamento y Municipio"
+    factura_promedio = "factura promedio Empresa Departamento y Municipio"
+    consumo_promedio = "consumo promedio Empresa Departamento y Municipio"
+    tarifa_media = "tarifa media Empresa Departamento y Municipio"
+    total_facturado = "Total Facturado Empresa Departamento y Municipio"
+
+
+class Ubicacion(int, enum.Enum):
     rural = 1
     urbano = 2
     centro_poblado = 3
@@ -24,129 +47,155 @@ class Ubicacion(str, enum.Enum):
 
 
 class UsageReportParams(pydantic.BaseModel, use_enum_values=True):
-    """Usage report for a given period of time."""
-
-    idreporte: SUIReport = pydantic.Field(
-        SUIReport.usage.value, serialization_alias="idreporte"
-    )
-    integration_masterreport: SUIReport = pydantic.Field(
-        SUIReport.usage.value, serialization_alias="integration_masterreport"
-    )
-    formatting_chosenformat: OutputFormat = "CSV"
 
     año: int = pydantic.Field(..., serialization_alias="ele_com_096.agno")
     periodo: int = pydantic.Field(..., serialization_alias="ele_com_096.periodo")
-    ubic: int = pydantic.Field(..., serialization_alias="ele_com_096.ubic")
-    depto: str = pydantic.Field("NULL_VALUE", serialization_alias="ele_com_096.depto")
-    municipio: str = pydantic.Field(
-        "NULL_VALUE", serialization_alias="ele_com_096.municipio"
+    reporte: Optional[Reporte] = pydantic.Field(
+        default=None, serialization_alias="ele_com_096.valor"
     )
-    empresa: str = pydantic.Field(
-        "NULL_VALUE", serialization_alias="ele_com_096.empresa"
+    ubicación: Optional[Ubicacion] = pydantic.Field(
+        default=Ubicacion.total.value, serialization_alias="ele_com_096.ubic"
     )
-    valor: Variable = "3"
+    formatting_chosenformat: Optional[OutputFormat] = pydantic.Field(
+        default=OutputFormat.csv.value, serialization_alias="formatting_chosenformat"
+    )
+
+    depto: Optional[str] = pydantic.Field(
+        default="NULL_VALUE",
+        serialization_alias="ele_com_096.depto",
+    )
+    municipio: Optional[str] = pydantic.Field(
+        default="NULL_VALUE", serialization_alias="ele_com_096.municipio"
+    )
+    empresa: Optional[str] = pydantic.Field(
+        default="NULL_VALUE", serialization_alias="ele_com_096.empresa"
+    )
 
 
-def get(client: httpx.Client, params: UsageReportParams):
+def get(client: httpx.Client, definition: UsageReportParams):
     """Get the usage report from the SUI."""
-    params = params.model_dump(by_alias=True)
+    params = FIXED_PARAMS | definition.model_dump(by_alias=True, exclude_none=True)
+    logger.debug(f"Getting usage report with params: {params}")
     response = client.get(BASE_URL, params=params, timeout=500)
     response.raise_for_status()
     response.encoding = "ANSI"
-    text = response.text
-    text = text.replace("BOGOTA, D.C.", "BOGOTA D.C.")
     return response.text
 
 
-def value_or_none(value):
+def float_or_none(value):
     return None if value in ["ND", ""] else float(value)
 
 
 class UsageRawRecord(pydantic.BaseModel):
+    año: int
+    período: int
     departamento: str
     municipio: str
     empresa: str
-    variable: str
-    estrato_1: int | None
-    estrato_2: int | None
-    estrato_3: int | None
-    estrato_4: int | None
-    estrato_5: int | None
-    estrato_6: int | None
-    total_residencial: int | None
-    industrial: int | None
-    comercial: int | None
-    oficial: int | None
-    otros: int | None
-    total_no_residencial: int | None
+    variable: Variable
+    estrato_1: float | None
+    estrato_2: float | None
+    estrato_3: float | None
+    estrato_4: float | None
+    estrato_5: float | None
+    estrato_6: float | None
+    total_residencial: float | None
+    industrial: float | None
+    comercial: float | None
+    oficial: float | None
+    otros: float | None
+    total_no_residencial: float | None
 
 
 class Metadata(pydantic.BaseModel):
     año: int
-    periodo: int
-    ubicacion: str
-    reporte_a_consultar: str
+    período: int
+    ubicación: str | None = None
+    reporte_a_consultar: str | None = None
 
 
-class Variable(str, enum.Enum):
-    suscriptores = 1
-    consumo = 2
-    valor_consumo = 3
-    factura_promedio = 4
-    consumo_promedio = 5
-    tarifa_media = 6
-    total_facturado = 7
+class TipoActividad(str, enum.Enum):
+    residencial = "residencial"
+    no_residencial = "no_residencial"
 
 
-class Actividad(str, enum.Enum):
+class ActividadResidencial(str, enum.Enum):
     estrato_1 = "estrato_1"
     estrato_2 = "estrato_2"
     estrato_3 = "estrato_3"
     estrato_4 = "estrato_4"
     estrato_5 = "estrato_5"
     estrato_6 = "estrato_6"
+
+
+class ActividadNoResidencial(str, enum.Enum):
     industrial = "industrial"
     comercial = "comercial"
     oficial = "oficial"
     otros = "otros"
 
 
+RESIDENTIAL_ACTIVITIES = [a.value for a in ActividadResidencial]
+NON_RESIDENTIAL_ACTIVITIES = [a.value for a in ActividadNoResidencial]
+
+
 class UsageTidyRecord(pydantic.BaseModel, use_enum_values=True):
     año: int
-    mes: int
+    período: int
     departamento: str
     municipio: str
     empresa: str
-    actividad: Actividad
-    variable: str
-    valor: int
+    tipo_actividad: TipoActividad
+    actividad: ActividadResidencial | ActividadNoResidencial
+    suscriptores: Optional[float] = pydantic.Field(default=None)
+    consumo: Optional[float] = pydantic.Field(default=None)
+    valor_consumo: Optional[float] = pydantic.Field(default=None)
+    factura_promedio: Optional[float] = pydantic.Field(default=None)
+    consumo_promedio: Optional[float] = pydantic.Field(default=None)
+    tarifa_media: Optional[float] = pydantic.Field(default=None)
+    total_facturado: Optional[float] = pydantic.Field(default=None)
 
 
-def tidy_usages(content: str, sep: str = ","):
-    content = content.replace("BOGOTÁ, D.C.", "BOGOTÁ D.C.").replace(
+def split_content(content: str) -> tuple[str, str]:
+    tail = content[-TAIL_METADATA_LENGTH:]
+    match = METADA_SEPARATOR_PATTERN.search(tail)
+    if match is not None:
+        start = TAIL_METADATA_LENGTH - match.start()
+        end = TAIL_METADATA_LENGTH - match.end() - 1
+    else:
+        raise ValueError("Metadata separator not found")
+    data_content = content[:-start]
+    metadata_content = content[-end:]
+
+    return data_content, metadata_content
+
+
+def parse_metadata(metadata_content: str) -> Metadata:
+    temp_dict = {}
+    for line in metadata_content.splitlines():
+        key, value = line.split(",")
+        temp_dict[key.lower()] = value if value != "" else None
+
+    metadata = Metadata.model_validate(temp_dict)
+    return metadata
+
+
+def fix_bad_fields(content: str) -> str:
+    return content.replace("BOGOTÁ, D.C.", "BOGOTÁ D.C.").replace(
         "BOGOTA, D.C.", "BOGOTÁ D.C."
     )
-    metadata_separator = "," * (len(UsageRawRecord.model_fields) - 1)
 
-    content_lines = content.splitlines()
-    split_at = content_lines.index(metadata_separator)
-    content_lines, metadata = content_lines[:split_at], content_lines[split_at + 1 :]
-    metadata = Metadata(
-        año=int(metadata[0].split(",")[1].strip()),
-        periodo=int(metadata[1].split(",")[1].strip()),
-        ubicacion=metadata[2].split(",")[1].strip(),
-        reporte_a_consultar=metadata[3].split(",")[1].strip(),
-    )
 
+def usages_to_raw_dataframe(content: str, metadata: Metadata, sep: str = ","):
     records = []
-    for i, line in enumerate(content_lines):
+    for i, line in enumerate(content.splitlines()):
         if i == 0:
             continue
         (
             departamento,
             municipio,
             empresa,
-            variable,
+            variable_value,
             estrato_1,
             estrato_2,
             estrato_3,
@@ -164,51 +213,102 @@ def tidy_usages(content: str, sep: str = ","):
         records.append(
             UsageRawRecord(
                 año=metadata.año,
-                mes=metadata.periodo,
+                período=metadata.período,
                 departamento=departamento,
                 municipio=municipio,
                 empresa=empresa,
-                variable=variable,
-                estrato_1=value_or_none(estrato_1),
-                estrato_2=value_or_none(estrato_2),
-                estrato_3=value_or_none(estrato_3),
-                estrato_4=value_or_none(estrato_4),
-                estrato_5=value_or_none(estrato_5),
-                estrato_6=value_or_none(estrato_6),
-                total_residencial=value_or_none(total_residencial),
-                industrial=value_or_none(industrial),
-                comercial=value_or_none(comercial),
-                oficial=value_or_none(oficial),
-                otros=value_or_none(otros),
-                total_no_residencial=value_or_none(total_no_residencial),
+                variable=Variable(variable_value),
+                estrato_1=float_or_none(estrato_1),
+                estrato_2=float_or_none(estrato_2),
+                estrato_3=float_or_none(estrato_3),
+                estrato_4=float_or_none(estrato_4),
+                estrato_5=float_or_none(estrato_5),
+                estrato_6=float_or_none(estrato_6),
+                total_residencial=float_or_none(total_residencial),
+                industrial=float_or_none(industrial),
+                comercial=float_or_none(comercial),
+                oficial=float_or_none(oficial),
+                otros=float_or_none(otros),
+                total_no_residencial=float_or_none(total_no_residencial),
             )
         )
     df = pd.DataFrame([record.model_dump() for record in records])
+    return df
 
-    index_cols = ["año", "mes", "departamento", "municipio", "empresa", "variable"]
-    activity_cols = [a.value for a in Actividad]
 
-    df = df.melt(
-        id_vars=index_cols,
-        value_vars=activity_cols,
-        var_name="actividad",
-        value_name="valor",
-    ).dropna()
-    records = df.to_dict(orient="records")
-    records = [UsageTidyRecord.model_validate(record) for record in records]
+def raw_to_tidy_dataframe(df: pd.DataFrame):
+    index_cols = [
+        "año",
+        "período",
+        "departamento",
+        "municipio",
+        "empresa",
+        # "variable",
+    ]
+    activity_cols = RESIDENTIAL_ACTIVITIES + NON_RESIDENTIAL_ACTIVITIES
+    dfs = []
+    for key, group in df.groupby(by=["variable"]):
+        df = group.melt(
+            id_vars=index_cols,
+            value_vars=activity_cols,
+            var_name="actividad",
+            value_name=key[0].name,
+        ).dropna()
+        dfs.append(df)
+    df = multimerge(dfs, on=index_cols + ["actividad"])
+    df["tipo_actividad"] = df["actividad"].map(tipo_actividad)
+    df = (
+        df.set_index(index_cols + ["tipo_actividad", "actividad"])
+        .sort_index()
+        .reset_index()
+    )
+    return df
 
-    return records
+
+def tidy_usages(content: str, sep: str = ","):
+    content = fix_bad_fields(content)
+
+    content, metadata_content = split_content(content)
+    metadata = parse_metadata(metadata_content)
+
+    df = usages_to_raw_dataframe(content=content, metadata=metadata, sep=sep)
+
+    df = raw_to_tidy_dataframe(df)
+    return df
+
+
+def multimerge(dfs: list[pd.DataFrame], on):
+    total = dfs[0]
+    for df in dfs[1:]:
+        total = total.merge(df, how="outer", on=on)
+    return total
+
+
+def tipo_actividad(actividad: str):
+    if actividad in RESIDENTIAL_ACTIVITIES:
+        return TipoActividad.residencial
+    elif actividad in NON_RESIDENTIAL_ACTIVITIES:
+        return TipoActividad.no_residencial
+    else:
+        raise ValueError("Invalid activity")
 
 
 if __name__ == "__main__":
+    reports = []
+    # for variable in Variable:
+    #     print(variable)
     params = UsageReportParams(
-        año=2021,
-        periodo=1,
-        ubic=Ubicacion.total,
+        año=2023,
+        periodo=12,
+        ubicación=Ubicacion.total,
+        # reporte=Reporte[Variable.consumo.name],
     )
     with httpx.Client() as client:
         usage_report = get(client, params)
 
-    records = tidy_usages(usage_report)
+    df = tidy_usages(usage_report)
+    print(df.to_csv("tidy_records.csv"))
+    records = df.to_dict(orient="records", index=True)
+    records = [UsageTidyRecord.model_validate(record) for record in records]
     for record in records:
         print(record)

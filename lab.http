@@ -17,3 +17,30 @@ GET http://reportes.sui.gov.co/fabricaReportes/reporte
     &ele_com_132.periodo=1
     &nombre_comercializador=ENERBIT+SAS+ESP
     &ele_com_132.comercializador=59850
+
+
+GET http://reportes.sui.gov.co/fabricaReportes/reporte
+    ?integration_masterreport=ele_com_096
+    &reporte_timesaccesed=2
+    &statistics_idvisita=3625072
+    &caching_actualrequest=ele_com_096B9D29318FD13CC800FDE722D8480D6C320240228090404608
+    &paginacion_page=1
+    &paginacion_size=-1
+    &ordering_orderby=
+    &ordering_ordermode=
+    &formatting_chosenformat=CSV
+    &graphics_graphic=0
+    &idreporte=ele_com_096
+    &sizeChooser=-1
+    &ele_com_096.agno=2003
+    &ele_com_096.periodo=6
+    &nombre_ubic=Total
+    &ele_com_096.ubic=4
+    &nombre_depto=sin+escogencia
+    &ele_com_096.depto=NULL_VALUE
+    &nombre_municipio=sin+escogencia
+    &ele_com_096.municipio=NULL_VALUE
+    &nombre_empresa=sin+escogencia
+    &ele_com_096.empresa=NULL_VALUE
+    &nombre_periodo=Suscriptores
+    &ele_com_096.valor=1
