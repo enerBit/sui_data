@@ -1,9 +1,9 @@
 # SUI Scrapper
 
-Scrapper for the SUI - "[Sistema Único de Información de Servicios Públicos Domiciliarios](http://www.sui.gov.co/web/)".
-A public database of utility data from Colombia.
+Cliente para el SUI - "[Sistema Único de Información de Servicios Públicos Domiciliarios](http://www.sui.gov.co/web/)".
+Una base de datos publica para informacin de los servicios publicos en Colombia.
 
-## Tidy data
+## Datos Prolijos
 
 Los *datos prolijos* ("tidy data" en inglés) son una forma estándar de relacionar el significado de un conjunto de datos a su estructura.
 Un conjunto de datos está prolijo o desprolijo dependiendo de cómo se relacionan las filas, columnas y tablas con las observaciones, las variables y los tipos.
