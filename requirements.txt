@@ -1,6 +1,0 @@
-pydantic-settings
-pydantic
-httpx
-toml
-beautifulsoup4
-pandas

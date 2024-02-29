@@ -1,15 +1,31 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python Debugger: Current File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal"
-        }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "sui download tc1",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "sui",
+      "console": "integratedTerminal",
+      "args": ["download", "tc1", "--month", "2023-12", "59850"]
+    },
+    {
+      "name": "sui download billing",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "sui",
+      "console": "integratedTerminal",
+      "args": ["download", "billing", "--month", "2023-12"]
+    },
+    {
+      "name": "Python Debugger: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal"
+    }
+  ]
 }

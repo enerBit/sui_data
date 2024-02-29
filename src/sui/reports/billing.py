@@ -14,8 +14,8 @@ METADA_SEPARATOR_PATTERN = re.compile(r",{14,16}")
 
 logger = logging.getLogger(__name__)
 FIXED_PARAMS = {
-    "idreporte": SUIReport.usage.value,
-    "integration_masterreport": SUIReport.usage.value,
+    "idreporte": SUIReport.billing.value,
+    "integration_masterreport": SUIReport.billing.value,
 }
 
 
@@ -46,7 +46,7 @@ class Ubicacion(int, enum.Enum):
     total = 4
 
 
-class UsageReportParams(pydantic.BaseModel, use_enum_values=True):
+class BillingReportParams(pydantic.BaseModel, use_enum_values=True):
 
     año: int = pydantic.Field(..., serialization_alias="ele_com_096.agno")
     periodo: int = pydantic.Field(..., serialization_alias="ele_com_096.periodo")
@@ -72,10 +72,10 @@ class UsageReportParams(pydantic.BaseModel, use_enum_values=True):
     )
 
 
-def get(client: httpx.Client, definition: UsageReportParams):
-    """Get the usage report from the SUI."""
+def get(client: httpx.Client, definition: BillingReportParams):
+    """Get the billing report from the SUI."""
     params = FIXED_PARAMS | definition.model_dump(by_alias=True, exclude_none=True)
-    logger.debug(f"Getting usage report with params: {params}")
+    logger.debug(f"Getting billing report with params: {params}")
     response = client.get(BASE_URL, params=params, timeout=500)
     response.raise_for_status()
     response.encoding = "ANSI"
@@ -86,7 +86,7 @@ def float_or_none(value):
     return None if value in ["ND", ""] else float(value)
 
 
-class UsageRawRecord(pydantic.BaseModel):
+class BillingRawRecord(pydantic.BaseModel):
     año: int
     período: int
     departamento: str
@@ -186,7 +186,7 @@ def fix_bad_fields(content: str) -> str:
     )
 
 
-def usages_to_raw_dataframe(content: str, metadata: Metadata, sep: str = ","):
+def billing_to_raw_dataframe(content: str, metadata: Metadata, sep: str = ","):
     records = []
     for i, line in enumerate(content.splitlines()):
         if i == 0:
@@ -211,7 +211,7 @@ def usages_to_raw_dataframe(content: str, metadata: Metadata, sep: str = ","):
         ) = line.strip().split(sep)
 
         records.append(
-            UsageRawRecord(
+            BillingRawRecord(
                 año=metadata.año,
                 período=metadata.período,
                 departamento=departamento,
@@ -265,16 +265,18 @@ def raw_to_tidy_dataframe(df: pd.DataFrame):
     return df
 
 
-def tidy_usages(content: str, sep: str = ","):
+def tidy_billing(content: str, sep: str = ","):
     content = fix_bad_fields(content)
 
     content, metadata_content = split_content(content)
     metadata = parse_metadata(metadata_content)
 
-    df = usages_to_raw_dataframe(content=content, metadata=metadata, sep=sep)
+    df = billing_to_raw_dataframe(content=content, metadata=metadata, sep=sep)
 
     df = raw_to_tidy_dataframe(df)
-    return df
+    records = df.to_dict(orient="records", index=True)
+    records = [UsageTidyRecord.model_validate(record) for record in records]
+    return records
 
 
 def multimerge(dfs: list[pd.DataFrame], on):
@@ -297,18 +299,15 @@ if __name__ == "__main__":
     reports = []
     # for variable in Variable:
     #     print(variable)
-    params = UsageReportParams(
+    params = BillingReportParams(
         año=2023,
         periodo=12,
         ubicación=Ubicacion.total,
         # reporte=Reporte[Variable.consumo.name],
     )
     with httpx.Client() as client:
-        usage_report = get(client, params)
+        billing_report = get(client, params)
 
-    df = tidy_usages(usage_report)
-    print(df.to_csv("tidy_records.csv"))
-    records = df.to_dict(orient="records", index=True)
-    records = [UsageTidyRecord.model_validate(record) for record in records]
+    records = tidy_billing(billing_report)
     for record in records:
         print(record)

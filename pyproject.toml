@@ -14,7 +14,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["typer"]
+dependencies = ["typer", "rich", "pandas", "httpx", "pydantic"]
 
 [project.urls]
 Homepage = "https://github.com/pypa/sampleproject"

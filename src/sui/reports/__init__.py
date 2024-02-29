@@ -4,7 +4,7 @@ BASE_URL = "http://reportes.sui.gov.co/fabricaReportes/reporte"
 
 
 class SUIReport(str, enum.Enum):
-    usage = "ele_com_096"
+    billing = "ele_com_096"
     tc1_validated = "ele_com_133"
 
 

@@ -1,12 +1,21 @@
 import enum
 import io
+import logging
 import zipfile
+from typing import Optional
 
 import bs4
 import httpx
 import pydantic
 
 from sui.reports import BASE_URL, OutputFormat, SUIReport
+
+logger = logging.getLogger(__name__)
+FIXED_PARAMS = {
+    "idreporte": SUIReport.tc1_validated.value,
+    "integration_masterreport": SUIReport.tc1_validated.value,
+}
+
 
 RETAILER_MAPPING = [
     ("3372", "A.S.C INGENIERIA SOCIEDAD ANONIMA SA ESP."),
@@ -82,33 +91,31 @@ class Ubicacion(str, enum.Enum):
     total = 4
 
 
-class UsageReportParams(pydantic.BaseModel, use_enum_values=True):
+class TC1ReportParams(pydantic.BaseModel, use_enum_values=True):
     """Usage report for a given period of time."""
 
-    idreporte: SUIReport = pydantic.Field(
-        SUIReport.tc1_validated.value, serialization_alias="idreporte"
+    formatting_chosenformat: Optional[OutputFormat] = pydantic.Field(
+        default=OutputFormat.html.value, serialization_alias="formatting_chosenformat"
     )
-    integration_masterreport: SUIReport = pydantic.Field(
-        SUIReport.tc1_validated.value, serialization_alias="integration_masterreport"
-    )
-    formatting_chosenformat: OutputFormat = "HTML"
 
     año: int = pydantic.Field(..., serialization_alias="ele_com_133.agno")
     periodo: int = pydantic.Field(..., serialization_alias="ele_com_133.periodo")
     comercializador: str = pydantic.Field(
         ..., serialization_alias="ele_com_133.comercializador"
     )
-    items: int = pydantic.Field(-1, serialization_alias="sizeChooser")
+    items: Optional[int] = pydantic.Field(default=-1, serialization_alias="sizeChooser")
 
 
-def get_tc1_validated(client: httpx.Client, params: UsageReportParams):
-    """Get the usage report from the SUI."""
-    params = params.model_dump(by_alias=True)
+def get_tc1_validated(client: httpx.Client, definition: TC1ReportParams):
+    """Get the TC1 report from the SUI."""
+    params = FIXED_PARAMS | definition.model_dump(by_alias=True, exclude_none=True)
     response = client.get(BASE_URL, params=params, timeout=500)
     response.raise_for_status()
     soup = bs4.BeautifulSoup(response.text, "html.parser")
-    url = soup.find("a", href=True)
-    response = client.get(url["href"], timeout=500)
+    anchor = soup.find("a", href=True)
+    assert anchor is not None
+    url: str = anchor.get("href")
+    response = client.get(url, timeout=500)
     response.raise_for_status()
     z = zipfile.ZipFile(io.BytesIO(response.content))
     raw_data = z.read("info").decode("utf-8")
@@ -122,7 +129,7 @@ class TC1TidyRecord(pydantic.BaseModel):
     año: int
 
 
-def tidy_tc1(content: io.StringIO, sep: str = "-"):
+def tidy_tc1(content: str, sep: str = "-"):
     records = []
     for i, line in enumerate(content.splitlines()):
         if i == 0:
@@ -140,7 +147,7 @@ def tidy_tc1(content: io.StringIO, sep: str = "-"):
 
 
 if __name__ == "__main__":
-    params = UsageReportParams(año=2024, periodo=1, comercializador="59850")
+    params = TC1ReportParams(año=2024, periodo=1, comercializador="59850")
     with httpx.Client() as client:
         tc1_validated = get_tc1_validated(client, params)
 
