@@ -8,7 +8,7 @@ import bs4
 import httpx
 import pydantic
 
-from sui.reports import BASE_URL, OutputFormat, SUIReport
+from sui_data.reports import BASE_URL, OutputFormat, SUIReport
 
 logger = logging.getLogger(__name__)
 FIXED_PARAMS = {

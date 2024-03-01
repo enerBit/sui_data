@@ -7,7 +7,7 @@ import httpx
 import pandas as pd
 import pydantic
 
-from sui.reports import BASE_URL, OutputFormat, SUIReport
+from sui_data.reports import BASE_URL, OutputFormat, SUIReport
 
 TAIL_METADATA_LENGTH = 1_000
 METADA_SEPARATOR_PATTERN = re.compile(r",{14,16}")

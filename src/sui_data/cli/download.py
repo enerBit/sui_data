@@ -3,9 +3,9 @@ import datetime as dt
 import httpx
 import typer
 
-import sui.console as console
-import sui.reports.billing as billing
-import sui.reports.tc1_validated as tc1
+import sui_data.console as console
+import sui_data.reports.billing as billing
+import sui_data.reports.tc1_validated as tc1
 
 YEAR_MONTH_FORMATS = ["%Y-%m", "%Y%m"]
 YEAR_MONTH_MATCH_ERROR_MESSAGE = f"Must match one of: {YEAR_MONTH_FORMATS}"

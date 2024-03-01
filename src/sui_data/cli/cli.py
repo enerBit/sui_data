@@ -3,7 +3,7 @@ import logging
 import rich.logging
 import typer
 
-import sui.cli.download as download
+import sui_data.cli.download as download
 
 logger = logging.getLogger("asic")
 logger.addHandler(rich.logging.RichHandler())
