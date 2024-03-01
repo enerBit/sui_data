@@ -1,0 +1,6 @@
+pytest
+pytest-datafiles
+types-setuptools
+pandas-stubs
+build
+ruff

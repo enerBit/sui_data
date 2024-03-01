@@ -1,10 +1,12 @@
 import logging
 
+import rich.logging
 import typer
 
 import sui.cli.download as download
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("asic")
+logger.addHandler(rich.logging.RichHandler())
 
 cli = typer.Typer(no_args_is_help=True)
 
