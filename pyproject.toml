@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sui_data"
-version = "0.0.1"
+version = "0.1.4"
 authors = [{ name = "Example Author", email = "jtamayoh@gmail.com" }]
 description = "scrap Sistema Único de Información de Servicios Públicos Domiciliarios"
 readme = "README.md"
